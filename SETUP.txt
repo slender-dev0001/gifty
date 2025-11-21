@@ -1,0 +1,186 @@
+╔════════════════════════════════════════════════════════════════╗
+║           BOT DISCORD - GUIDE D'INSTALLATION                    ║
+╚════════════════════════════════════════════════════════════════╝
+
+📋 PRÉREQUIS:
+   • Python 3.8+
+   • pip (gestionnaire de paquets Python)
+   • Un token de bot Discord
+
+🚀 ÉTAPES D'INSTALLATION:
+
+1. Installer les dépendances
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   pip install -r requirements.txt
+
+2. Configurer le token
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   • Copier .env.example en .env
+   • Ouvrir .env et remplacer "your_bot_token_here" par votre token
+   
+   ⚠️ SÉCURITÉ: NE JAMAIS partager votre token!
+
+3. Lancer le bot
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   python main.py
+
+🎮 OBTENIR UN TOKEN DISCORD:
+
+1. Aller sur: https://discord.com/developers/applications
+2. Créer une nouvelle application
+3. Aller dans l'onglet "Bot"
+4. Cliquer sur "Add Bot"
+5. Copier le token sous "TOKEN"
+6. Activer les permissions nécessaires:
+   • Message Content Intent
+   • Server Members Intent
+7. Inviter le bot sur votre serveur avec ce lien:
+   https://discord.com/api/oauth2/authorize?client_id=YOUR_CLIENT_ID&permissions=8&scope=bot
+
+📚 COMMANDES DISPONIBLES (50+):
+
+BASIQUES:
+   +help           - Voir toutes les commandes
+   +hello          - Salutation du bot
+   +ping           - Latence du bot
+   +say <msg>      - Le bot répète
+   +avatar [@user] - Avatar de l'utilisateur
+
+SLASH COMMANDS (Modernes):
+   /slashhelp      - Aide des slash commands
+   /ping           - Latence (slash version)
+   /usercard       - Carte de profil
+   /leaderboard    - Top 10 des utilisateurs
+   /about          - À propos du bot
+
+INFOS:
+   +serverinfo     - Infos du serveur
+   +userinfo [@u]  - Infos utilisateur
+   +roleinfo       - Infos sur un rôle
+   +channelinfo    - Infos sur le canal
+   +stats          - Stats du bot
+
+MODÉRATION (Admin):
+   +clear <n>      - Supprimer n messages
+   +kick @user     - Expulser un utilisateur
+   +ban @user      - Bannir un utilisateur
+   +unban @user    - Débannir un utilisateur
+   +mute @user     - Rendre muet
+   +unmute @user   - Rendre la parole
+
+PLAISIR:
+   +dice           - Lancer un dé
+   +flip           - Lancer une pièce
+   +8ball <Q>      - Boule de cristal
+
+INTERACTIONS (Buttons, Menus, Modales):
+   +buttons        - Boutons interactifs (Confirmer/Annuler)
+   +select         - Menu déroulant de couleurs
+   +modal          - Formulaire d'inscription (modale)
+
+ÉVÉNEMENTS:
+   +autoroles <role>  - Auto-rôle via bouton
+   +reactionrole <id> - Réaction-rôle (emoji → rôle)
+   +welcome        - Message de bienvenue personnalisé
+   +setuplogs      - Créer le canal de logs
+
+PROFILS & ÉCONOMIE:
+   +profile [@u]   - Voir le profil utilisateur
+   +setbio <bio>   - Changer ta bio
+   +balance [@u]   - Voir la balance de coins
+   +addbal @u <n>  - Ajouter des coins (Admin)
+   +leaderboard    - Top 10 des utilisateurs (XP/Level)
+
+🏗️ STRUCTURE DU PROJET:
+
+bot discord +/
+├── main.py              ← Fichier principal
+├── config.py            ← Configuration
+├── users.db             ← BD SQLite (auto-créée)
+├── .env                 ← Token (À CRÉER)
+├── .env.example         ← Template
+├── requirements.txt     ← Dépendances
+├── SETUP.txt            ← Ce fichier
+└── cogs/
+    ├── commands.py      ← Commandes basiques
+    ├── moderation.py    ← Modération
+    ├── utility.py       ← Utilitaires
+    ├── slash_commands.py    ← Slash commands (/)
+    ├── interactions.py      ← Buttons, Menus, Modales
+    ├── logs.py          ← Système de logs
+    ├── events.py        ← Événements, autorôles, réaction-rôles
+    └── profiles.py      ← Profils, XP, Balance, BD SQLite
+
+💡 CONSEILS D'UTILISATION:
+
+Structure des Cogs:
+• Chaque cog est une extension indépendante (facile à modifier/ajouter)
+• Les cogs se chargent automatiquement au démarrage du bot
+
+Configuration recommandée:
+• Créez un canal "bienvenue" pour les messages de bienvenue automatiques
+• Créez un canal "logs" pour les logs (modération, jointures, etc.)
+• Créez un rôle "Muted" pour la modération
+• Utilisez +autoroles pour ajouter des rôles automatiques
+
+Système de Profil:
+• Les utilisateurs gagnent 10 XP par message
+• Ils montent de niveau tous les 1000 XP
+• Les coins peuvent être gérés par les admins avec +addbal
+• Base de données SQLite (users.db) créée automatiquement
+
+Interactions Avancées:
+• Utilisez +buttons, +select, +modal pour tester les interactions
+• Slash commands (/) apparaissent en tapant /
+• Réactions emoji → rôles avec +reactionrole
+
+Commandes Admin:
+• +setuplogs crée automatiquement le canal de logs
+• +clear, +kick, +ban, +mute nécessitent les permissions
+• +addbal permet de donner des coins aux utilisateurs
+
+🆘 DÉPANNAGE:
+
+Erreur: "DISCORD_TOKEN non trouvé"
+   → Vérifiez que le fichier .env existe et contient votre token
+
+Erreur: "discord.py not found"
+   → Exécutez: pip install -r requirements.txt
+
+Bot ne répond pas
+   → Vérifiez que les intents sont activés dans Discord Developer Portal
+   → Vérifiez que le bot a les permissions nécessaires
+
+Les slash commands n'apparaissent pas
+   → Attendez 1-2 minutes après le démarrage du bot
+   → Les slash commands se synchronisent automatiquement
+
+Base de données manquante
+   → La base de données users.db est créée automatiquement
+   → Elle se trouve à la racine du projet
+
+Les logs ne s'affichent pas
+   → Créez un canal nommé "logs" ou "mod-logs"
+   → Utilisez +setuplogs pour le créer automatiquement
+
+Permissions insuffisantes
+   → Assurez-vous que le bot a les permissions (Admin ou personnalisées)
+   → Vérifiez que les rôles du bot sont au-dessus des rôles des utilisateurs
+
+✨ FONCTIONNALITÉS AVANCÉES:
+
+• Base de données SQLite intégrée pour les profils
+• Système de leveling automatique basé sur les messages
+• Logs complets (jointures, bans, messages supprimés, modèles de noms, etc.)
+• Réactions emoji → rôles (automatique)
+• Autorôles via boutons
+• Messages de bienvenue personnalisés
+• Interactions modernes (Buttons, Select Menus, Modales)
+• Slash commands (commandes modernes)
+
+═══════════════════════════════════════════════════════════════════
+Bon développement! 🚀
+
+Pour plus d'aide, consultez la documentation discord.py:
+https://discordpy.readthedocs.io/
+═══════════════════════════════════════════════════════════════════
