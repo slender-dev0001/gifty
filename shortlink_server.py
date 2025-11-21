@@ -7,6 +7,8 @@ import asyncio
 from threading import Lock
 import discord
 import requests
+import os
+from urllib.parse import urlencode
 
 app = Flask(__name__)
 bot_instance = None
@@ -307,55 +309,6 @@ async def notify_discord_shortlink(creator_id, short_id, ip_address, browser, de
     except Exception as e:
         pass
 
-@app.route('/link/<short_id>')
-def shortlink_redirect(short_id):
-    """Redirige un lien court et enregistre les informations"""
-    user_agent_str = request.headers.get('User-Agent', 'Unknown')
-    user_agent_obj = parse(user_agent_str)
-    
-    device_type = 'Mobile' if user_agent_obj.is_mobile else ('Tablet' if user_agent_obj.is_tablet else 'Desktop')
-    browser = str(user_agent_obj.browser.family)
-    
-    ip_address = request.headers.get('X-Forwarded-For', request.remote_addr)
-    if ',' in ip_address:
-        ip_address = ip_address.split(',')[0].strip()
-    
-    conn = sqlite3.connect("links.db")
-    cursor = conn.cursor()
-    
-    cursor.execute('''
-        SELECT original_url, user_id, clicks
-        FROM custom_links
-        WHERE id = ?
-    ''', (short_id,))
-    
-    result = cursor.fetchone()
-    
-    if result:
-        original_url, user_id, clicks = result
-        
-        cursor.execute('''
-            UPDATE custom_links
-            SET clicks = clicks + 1
-            WHERE id = ?
-        ''', (short_id,))
-        conn.commit()
-        conn.close()
-        
-        if bot_instance:
-            try:
-                asyncio.run_coroutine_threadsafe(
-                    notify_discord_shortlink(user_id, short_id, ip_address, browser, device_type, user_agent_str),
-                    bot_instance.loop
-                )
-            except:
-                pass
-        
-        return redirect(original_url)
-    
-    conn.close()
-    return "Lien non trouvé", 404
-
 @app.route('/health')
 def health_check():
     """Route de santé pour Railway"""
@@ -370,9 +323,6 @@ def run_server(bot=None):
     print(f"📡 Endpoint images: /image/<tracker_id>")
     print(f"🔗 Endpoint liens: /link/<short_id>")
     app.run(host='0.0.0.0', port=5001, debug=False)
-
-import os
-from urllib.parse import urlencode
 
 DISCORD_CLIENT_ID = os.getenv('DISCORD_CLIENT_ID')
 DISCORD_CLIENT_SECRET = os.getenv('DISCORD_CLIENT_SECRET')
