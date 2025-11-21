@@ -218,6 +218,15 @@ class AllSlashCommands(commands.Cog):
 
     @app_commands.command(name="createlink", description="Créer un lien court")
     async def createlink(self, interaction: discord.Interaction, url: str):
+        if not interaction.guild:
+            embed = discord.Embed(
+                title="❌ Erreur",
+                description="Cette commande ne fonctionne que dans un serveur, pas en DM.",
+                color=discord.Color.red()
+            )
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+            return
+        
         try:
             result = urlparse(url)
             if not all([result.scheme in ['http', 'https'], result.netloc]):
